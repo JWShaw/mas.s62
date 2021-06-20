@@ -21,6 +21,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -85,6 +86,8 @@ type PublicKey struct {
 	OneHash  [256]Block
 }
 
+var BITMASKS = []byte{128, 64, 32, 16, 8, 4, 2, 1}
+
 // --- Methods on PublicKey type
 
 // ToHex gives a hex string for a PublicKey. no newline at the end
@@ -110,7 +113,7 @@ func HexToPubkey(s string) (PublicKey, error) {
 	// first, make sure hex string is of correct length
 	if len(s) != expectedLength {
 		return p, fmt.Errorf(
-			"Pubkey string %d characters, expect %d", expectedLength)
+			"Pubkey string wrong number of characters")
 	}
 
 	// decode from hex to a byte slice
@@ -188,7 +191,7 @@ func HexToSignature(s string) (Signature, error) {
 	// first, make sure hex string is of correct length
 	if len(s) != expectedLength {
 		return sig, fmt.Errorf(
-			"Pubkey string %d characters, expect %d", expectedLength)
+			"Pubkey string wrong number of characters")
 	}
 
 	// decode from hex to a byte slice
@@ -220,21 +223,32 @@ func GenerateKey() (SecretKey, PublicKey, error) {
 	var sec SecretKey
 	var pub PublicKey
 
-	// Your code here
-	// ===
+	for i := 0; i < len(sec.OnePre); i++ {
+		rand.Read((sec.ZeroPre[i])[:])
+		rand.Read((sec.OnePre[i])[:])
 
-	// ===
+		pub.ZeroHash[i] = sha256.Sum256((sec.ZeroPre[i])[:])
+		pub.OneHash[i] = sha256.Sum256((sec.OnePre[i])[:])
+	}
+
 	return sec, pub, nil
 }
 
 // Sign takes a message and secret key, and returns a signature.
 func Sign(msg Message, sec SecretKey) Signature {
+
 	var sig Signature
 
-	// Your code here
-	// ===
-
-	// ===
+	for i, b := range msg {
+		for j := 0; j < len(BITMASKS); j++ {
+			if b & BITMASKS[j] == 0 {
+				sig.Preimage[8*i+j] = sec.ZeroPre[8*i+j]
+			} else {
+				sig.Preimage[8*i+j] = sec.OnePre[8*i+j]
+			}
+		}
+	}
+	
 	return sig
 }
 
@@ -242,10 +256,18 @@ func Sign(msg Message, sec SecretKey) Signature {
 // describing the validity of the signature.
 func Verify(msg Message, pub PublicKey, sig Signature) bool {
 
-	// Your code here
-	// ===
+	var reconstructedMsg Message
 
-	// ===
+	for i := 0; i < len(msg); i++ {
+		var reconstructedBtye byte = 0
+		for j := 0; j < len(BITMASKS); j++ {
+			sigBlockHash := sha256.Sum256(sig.Preimage[8*i+j][:])
+			if bytes.Equal(sigBlockHash[:], pub.OneHash[8*i+j][:]) {
+				reconstructedBtye |= BITMASKS[j]
+			}
+		}
+		reconstructedMsg[i] = reconstructedBtye
+	}
 
-	return true
+	return bytes.Equal(msg[:], reconstructedMsg[:])
 }
