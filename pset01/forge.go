@@ -1,6 +1,8 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 /*
 A note about the provided keys and signatures:
@@ -119,16 +121,56 @@ func Forge() (string, Signature, error) {
 	fmt.Printf("ok 3: %v\n", Verify(msgslice[2], pub, sig3))
 	fmt.Printf("ok 4: %v\n", Verify(msgslice[3], pub, sig4))
 
-	msgString := "my forged message"
+	msgStringTemplate := "forgery jonathan shaw "
+	var msgString string
+	var msg Message
 	var sig Signature
 
-	// your code here!
-	// ==
-	// Geordi La
-	// ==
+	var zeroSecFound [256]bool
+	var oneSecFound [256]bool
+
+	// Find out which parts of the secret key we already know
+	for i := 0; i < len(sigslice[0].Preimage); i++ {
+		if (sigslice[0].Preimage[i]).Hash() == pub.ZeroHash[i] ||
+			(sigslice[1].Preimage[i]).Hash() == pub.ZeroHash[i] ||
+			(sigslice[2].Preimage[i]).Hash() == pub.ZeroHash[i] ||
+			(sigslice[3].Preimage[i]).Hash() == pub.ZeroHash[i] {
+			zeroSecFound[i] = true
+		}
+		if (sigslice[0].Preimage[i]).Hash() == pub.OneHash[i] ||
+			(sigslice[1].Preimage[i]).Hash() == pub.OneHash[i] ||
+			(sigslice[2].Preimage[i]).Hash() == pub.OneHash[i] ||
+			(sigslice[3].Preimage[i]).Hash() == pub.OneHash[i] {
+			oneSecFound[i] = true
+		}
+	}
+
+	for i := 0; i < 25; i++ {
+		msgString = msgStringTemplate + fmt.Sprint(i)
+		msg = GetMessageFromString(msgString)
+		if checkMsg(zeroSecFound, oneSecFound, msg) {
+			break
+		}
+	}
 
 	return msgString, sig, nil
+}
 
+func checkMsg(zeroSecFound [256]bool, oneSecFound [256]bool, msg Message) bool {
+	var i uint = 0
+	for i = 0; i < 32; i++ {
+		var j uint = 0
+		for j = 0; j < 8; j++ {
+			if zeroSecFound[8*i+j] != oneSecFound[8*i+j] {
+				if zeroSecFound[8*i+j] && (msg[i]&BITMASKS[j]) != 0 {
+					return false
+				} else if oneSecFound[8*i+j] && (msg[i]&BITMASKS[j]) == 0 {
+					return false
+				}
+			}
+		}
+	}
+	return true
 }
 
 // hint:

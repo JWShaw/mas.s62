@@ -227,8 +227,8 @@ func GenerateKey() (SecretKey, PublicKey, error) {
 		rand.Read((sec.ZeroPre[i])[:])
 		rand.Read((sec.OnePre[i])[:])
 
-		pub.ZeroHash[i] = sha256.Sum256((sec.ZeroPre[i])[:])
-		pub.OneHash[i] = sha256.Sum256((sec.OnePre[i])[:])
+		pub.ZeroHash[i] = (sec.ZeroPre[i]).Hash()
+		pub.OneHash[i] = (sec.OnePre[i]).Hash()
 	}
 
 	return sec, pub, nil
@@ -241,14 +241,14 @@ func Sign(msg Message, sec SecretKey) Signature {
 
 	for i, b := range msg {
 		for j := 0; j < len(BITMASKS); j++ {
-			if b & BITMASKS[j] == 0 {
+			if b&BITMASKS[j] == 0 {
 				sig.Preimage[8*i+j] = sec.ZeroPre[8*i+j]
 			} else {
 				sig.Preimage[8*i+j] = sec.OnePre[8*i+j]
 			}
 		}
 	}
-	
+
 	return sig
 }
 
@@ -261,7 +261,7 @@ func Verify(msg Message, pub PublicKey, sig Signature) bool {
 	for i := 0; i < len(msg); i++ {
 		var reconstructedBtye byte = 0
 		for j := 0; j < len(BITMASKS); j++ {
-			sigBlockHash := sha256.Sum256(sig.Preimage[8*i+j][:])
+			sigBlockHash := sig.Preimage[8*i+j].Hash()
 			if bytes.Equal(sigBlockHash[:], pub.OneHash[8*i+j][:]) {
 				reconstructedBtye |= BITMASKS[j]
 			}
