@@ -145,7 +145,9 @@ func Forge() (string, Signature, error) {
 		}
 	}
 
-	for i := 0; i < 25; i++ {
+	// Find a message that can be forged
+	// Message: "forgery jonathan shaw 497643297"
+	for i := 497643290; ; i++ {
 		msgString = msgStringTemplate + fmt.Sprint(i)
 		msg = GetMessageFromString(msgString)
 		if checkMsg(zeroSecFound, oneSecFound, msg) {
@@ -153,9 +155,26 @@ func Forge() (string, Signature, error) {
 		}
 	}
 
+	// Construct the signature
+	// This block of code is perfectly unreadable
+	for i, b := range msg {
+		for j := 0; j < len(BITMASKS); j++ {
+			if b&BITMASKS[j] == msgslice[0][i]&BITMASKS[j] {
+				sig.Preimage[8*i+j] = sigslice[0].Preimage[8*i+j]
+			} else if b&BITMASKS[j] == msgslice[1][i]&BITMASKS[j] {
+				sig.Preimage[8*i+j] = sigslice[1].Preimage[8*i+j]
+			} else if b&BITMASKS[j] == msgslice[2][i]&BITMASKS[j] {
+				sig.Preimage[8*i+j] = sigslice[2].Preimage[8*i+j]
+			} else if b&BITMASKS[j] == msgslice[3][i]&BITMASKS[j] {
+				sig.Preimage[8*i+j] = sigslice[3].Preimage[8*i+j]
+			}
+		}
+	}
+
 	return msgString, sig, nil
 }
 
+// Check whether a given message can be forged
 func checkMsg(zeroSecFound [256]bool, oneSecFound [256]bool, msg Message) bool {
 	var i uint = 0
 	for i = 0; i < 32; i++ {
