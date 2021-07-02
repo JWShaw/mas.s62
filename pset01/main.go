@@ -256,18 +256,14 @@ func Sign(msg Message, sec SecretKey) Signature {
 // describing the validity of the signature.
 func Verify(msg Message, pub PublicKey, sig Signature) bool {
 
-	var reconstructedMsg Message
-
-	for i := 0; i < len(msg); i++ {
-		var reconstructedBtye byte = 0
+	for i, b := range msg {
 		for j := 0; j < len(BITMASKS); j++ {
-			sigBlockHash := sig.Preimage[8*i+j].Hash()
-			if bytes.Equal(sigBlockHash[:], pub.OneHash[8*i+j][:]) {
-				reconstructedBtye |= BITMASKS[j]
+			if b&BITMASKS[j] == 0 && sig.Preimage[8*i+j].Hash() != pub.ZeroHash[8*i+j] {
+				return false
+			} else if b&BITMASKS[j] != 0 && sig.Preimage[8*i+j].Hash() != pub.OneHash[8*i+j] {
+				return false
 			}
 		}
-		reconstructedMsg[i] = reconstructedBtye
 	}
-
-	return bytes.Equal(msg[:], reconstructedMsg[:])
+	return true
 }
